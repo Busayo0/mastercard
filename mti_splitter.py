@@ -1,26 +1,25 @@
 # mti_splitter.py
 import re
 
-# Mastercard MTIs typically begin with '1240', '1442', '1644' etc.
-# PAN starts with 5 or 4, and is usually 16 digits
+# Define explicit MTI list (expand as needed)
+VALID_MTIS = ["1240", "1442", "1644", "1804", "1420", "1422", "1424", "1426", "1428", "1430"]
 
-MTI_PATTERN = re.compile(r"(?=(12[4-9]0|14[4-9]2|16[4-9]4))")
-PAN_PATTERN = re.compile(r"\b[45]\d{11,18}\b")
-
+# Create a pattern to match any of the valid MTIs
+MTI_PATTERN = re.compile(rf"({'|'.join(VALID_MTIS)})")
 
 def extract_records_from_raw_text(content: str, max_record_len=2000):
-    # Split based on MTI locations
-    indexes = [m.start(1) for m in MTI_PATTERN.finditer(content)]
-    if not indexes:
+    matches = list(MTI_PATTERN.finditer(content))
+    if not matches:
         return []
 
-    indexes.append(len(content))  # Sentinel to capture last segment
     records = []
-    for i in range(len(indexes) - 1):
-        start, end = indexes[i], indexes[i + 1]
+    for i, match in enumerate(matches):
+        start = match.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
         record = content[start:end].strip()
 
-        if PAN_PATTERN.search(record):  # Confirm valid PAN exists
+        # Filter out too-short records (likely noise)
+        if len(record) >= 60:
             records.append(record)
 
     return records
